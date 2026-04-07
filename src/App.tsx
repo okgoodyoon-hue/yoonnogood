@@ -27,7 +27,6 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI, Type } from "@google/genai";
 import { 
   collection, 
   addDoc, 
@@ -629,13 +628,7 @@ export default function App() {
   const [restLoading, setRestLoading] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  const aiRef = useRef<GoogleGenAI | null>(null);
-
   useEffect(() => {
-    if (process.env.GEMINI_API_KEY) {
-      aiRef.current = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    }
-    
     // Get location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -648,17 +641,15 @@ export default function App() {
   const handlePriceSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!priceQuery) return;
-    if (!aiRef.current) {
-      setPriceResult("AI 서비스가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.");
-      return;
-    }
 
     setPriceLoading(true);
     setPriceResult("");
     try {
-      const response = await aiRef.current.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `국내 최저가 상품을 심층 분석해주세요: "${priceQuery}". 
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: `국내 최저가 상품을 심층 분석해주세요: "${priceQuery}". 
         
         출력 가이드 (이미지 제외, 텍스트 기반의 프리미엄 분석 리포트 작성):
         1. **절대 금지**: 어떠한 이미지(마크다운 이미지 포함)도 포함하지 마세요.
@@ -679,14 +670,17 @@ export default function App() {
         7. **## 📉 AI 구매 적기 판단 가이드**: 지금 구매할지 기다릴지 근거와 함께 제시하세요.
         8. **## ✨ 전문가 추천 대안 모델**: 가성비가 더 좋거나 성능이 우수한 대안을 추천하세요.
         9. 전체적인 톤은 전문적이고 신뢰감 있게 작성하세요.`,
-        config: {
-          tools: [{ googleSearch: {} }]
-        }
+          useSearch: true
+        })
       });
+
+      if (!res.ok) throw new Error("AI 요청에 실패했습니다.");
+      
+      const data = await res.json();
       
       // Extract grounding metadata for source links
-      const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      let resultText = response.text || '결과를 가져오지 못했습니다.';
+      const groundingChunks = data.groundingMetadata?.groundingChunks;
+      let resultText = data.text || '결과를 가져오지 못했습니다.';
       
       if (groundingChunks && groundingChunks.length > 0) {
         const sources = groundingChunks
@@ -695,14 +689,14 @@ export default function App() {
         
         if (sources.length > 0) {
           resultText += "\n\n---\n### 🔗 쇼핑몰 바로가기\n" + 
-            Array.from(new Set(sources)).map(url => `- [${new URL(url).hostname}](${url})`).join('\n');
+            Array.from(new Set(sources)).map(url => `- [${new URL(url as string).hostname}](${url})`).join('\n');
         }
       }
       
       setPriceResult(resultText);
     } catch (err) {
       console.error("AI Price error:", err);
-      setPriceResult("최저가 정보를 가져오는 중 오류가 발생했습니다. 검색어가 너무 짧거나 부적절할 수 있습니다.");
+      setPriceResult("최저가 정보를 가져오는 중 오류가 발생했습니다. 서버 설정을 확인해주세요.");
     } finally {
       setPriceLoading(false);
     }
@@ -711,17 +705,15 @@ export default function App() {
   const handleRestSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restQuery) return;
-    if (!aiRef.current) {
-      setRestResult("AI 서비스가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.");
-      return;
-    }
 
     setRestLoading(true);
     setRestResult("");
     try {
-      const response = await aiRef.current.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `맛집 추천: "${restQuery}". 
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: `맛집 추천: "${restQuery}". 
         ${location ? `사용자 현재 위치: 위도 ${location.lat}, 경도 ${location.lng}` : ''}
         
         출력 가이드 (이미지 제외, 프리미엄 종합 분석 리포트 작성):
@@ -743,14 +735,17 @@ export default function App() {
         6. **## 🍽️ [맛집명]**: 세 번째 추천 맛집의 이름을 제목으로 사용하고 심층 분석을 제공하세요. (위와 동일한 형식)
         7. **## ✨ AI 숨은 맛집 제안**: 잘 알려지지 않았지만 평점이 높은 대안 장소를 추천하세요.
         8. 한국어로 친절하고 생생하게 답변해주세요.`,
-        config: {
-          tools: [{ googleSearch: {} }]
-        }
+          useSearch: true
+        })
       });
+
+      if (!res.ok) throw new Error("AI 요청에 실패했습니다.");
       
-      // Extract grounding metadata if available to show source links
-      const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      let resultText = response.text || '결과를 가져오지 못했습니다.';
+      const data = await res.json();
+      
+      // Extract grounding metadata for source links
+      const groundingChunks = data.groundingMetadata?.groundingChunks;
+      let resultText = data.text || '결과를 가져오지 못했습니다.';
       
       if (groundingChunks && groundingChunks.length > 0) {
         const sources = groundingChunks
@@ -759,14 +754,14 @@ export default function App() {
         
         if (sources.length > 0) {
           resultText += "\n\n---\n### 🔗 참고 자료 및 출처\n" + 
-            Array.from(new Set(sources)).map(url => `- [${new URL(url).hostname}](${url})`).join('\n');
+            Array.from(new Set(sources)).map(url => `- [${new URL(url as string).hostname}](${url})`).join('\n');
         }
       }
       
       setRestResult(resultText);
     } catch (err) {
-      console.error("AI Restaurant error:", err);
-      setRestResult("맛집 정보를 가져오는 중 오류가 발생했습니다. 검색어가 너무 짧거나 부적절할 수 있습니다.");
+      console.error("AI Rest error:", err);
+      setRestResult("맛집 정보를 가져오는 중 오류가 발생했습니다. 서버 설정을 확인해주세요.");
     } finally {
       setRestLoading(false);
     }
