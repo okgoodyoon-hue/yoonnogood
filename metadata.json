@@ -1,0 +1,5 @@
+{
+  "name": "AI 최저가 & 맛집 추천 대시보드",
+  "description": "AI를 통한 최저가 상품 및 맛집 추천과 사용자 간의 정보 공유를 위한 통합 대시보드입니다.",
+  "requestFramePermissions": ["geolocation"]
+}

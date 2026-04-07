@@ -1,0 +1,38 @@
+{
+  "entities": {
+    "PriceShare": {
+      "title": "Price Share",
+      "description": "A user-shared lowest price find.",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "format": "uri", "description": "URL of the shopping mall, cafe, or SNS." },
+        "description": { "type": "string", "description": "Short introduction (max 100 chars)." },
+        "likes": { "type": "number", "description": "Number of likes/agreements." },
+        "authorId": { "type": "string", "description": "UID of the user who shared." },
+        "authorName": { "type": "string", "description": "Name of the user." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." },
+        "likedBy": { "type": "array", "items": { "type": "string" }, "description": "List of user UIDs who liked this." }
+      },
+      "required": ["url", "description", "likes", "authorId", "createdAt"]
+    },
+    "RestaurantShare": {
+      "title": "Restaurant Share",
+      "description": "A user-shared restaurant recommendation.",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "format": "uri", "description": "URL of the restaurant review or info." },
+        "description": { "type": "string", "description": "Short introduction (max 100 chars)." },
+        "likes": { "type": "number", "description": "Number of likes/agreements." },
+        "authorId": { "type": "string", "description": "UID of the user who shared." },
+        "authorName": { "type": "string", "description": "Name of the user." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." },
+        "likedBy": { "type": "array", "items": { "type": "string" }, "description": "List of user UIDs who liked this." }
+      },
+      "required": ["url", "description", "likes", "authorId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "priceShares": { "schema": "PriceShare", "description": "Collection of price sharing posts." },
+    "restaurantShares": { "schema": "RestaurantShare", "description": "Collection of restaurant sharing posts." }
+  }
+}

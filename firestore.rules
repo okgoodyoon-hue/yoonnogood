@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.authorId;
+    }
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    function isValidString(field, min, max) {
+      return request.resource.data[field] is string && 
+             request.resource.data[field].size() >= min && 
+             request.resource.data[field].size() <= max;
+    }
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // Validation for Shares
+    function isValidShare(data) {
+      return data.description is string && data.description.size() <= 100 &&
+             isValidUrl(data.url) &&
+             data.likes is number &&
+             data.authorId == request.auth.uid;
+    }
+
+    match /priceShares/{shareId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidShare(request.resource.data);
+      allow update: if isAuthenticated() && (
+        // Owner can update everything
+        isDocOwner() || 
+        // Others can only update 'likes' and 'likedBy'
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy']))
+      );
+      allow delete: if isDocOwner();
+    }
+
+    match /restaurantShares/{shareId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidShare(request.resource.data);
+      allow update: if isAuthenticated() && (
+        isDocOwner() || 
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy']))
+      );
+      allow delete: if isDocOwner();
+    }
+  }
+}
