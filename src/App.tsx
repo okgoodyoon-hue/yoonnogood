@@ -694,9 +694,9 @@ export default function App() {
       }
       
       setPriceResult(resultText);
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Price error:", err);
-      setPriceResult("최저가 정보를 가져오는 중 오류가 발생했습니다. 서버 설정을 확인해주세요.");
+      setPriceResult(`최저가 정보를 가져오는 중 오류가 발생했습니다: ${err.message || "서버 설정을 확인해주세요."}`);
     } finally {
       setPriceLoading(false);
     }
@@ -739,7 +739,10 @@ export default function App() {
         })
       });
 
-      if (!res.ok) throw new Error("AI 요청에 실패했습니다.");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "AI 요청에 실패했습니다.");
+      }
       
       const data = await res.json();
       
@@ -759,9 +762,9 @@ export default function App() {
       }
       
       setRestResult(resultText);
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Rest error:", err);
-      setRestResult("맛집 정보를 가져오는 중 오류가 발생했습니다. 서버 설정을 확인해주세요.");
+      setRestResult(`맛집 정보를 가져오는 중 오류가 발생했습니다: ${err.message || "서버 설정을 확인해주세요."}`);
     } finally {
       setRestLoading(false);
     }

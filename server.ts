@@ -21,20 +21,23 @@ async function startServer() {
       return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
     }
 
+    console.log(`AI Request: model=${model}, useSearch=${useSearch}`);
     try {
       const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      // Use the models.generateContent pattern seen in the original App.tsx
+      
+      // Use the exact pattern from the original App.tsx which was working
       const result = await (genAI as any).models.generateContent({
         model,
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        tools: useSearch ? [{ googleSearch: {} }] : undefined,
+        contents: prompt,
+        config: {
+          tools: useSearch ? [{ googleSearch: {} }] : undefined,
+        }
       });
 
-      const response = result.response;
-      const text = response.text();
-      
-      // Extract grounding metadata if available
-      const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
+      console.log("AI Response received");
+      // The result structure might be different for this SDK version
+      const text = result.text || (result.response && result.response.text && result.response.text()) || "";
+      const groundingMetadata = result.candidates?.[0]?.groundingMetadata || (result.response && result.response.candidates?.[0]?.groundingMetadata);
 
       res.json({ text, groundingMetadata });
     } catch (error: any) {
